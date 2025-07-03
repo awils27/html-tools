@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Floating Love Hearts</title>
+  <style>
+    /* Remove default margins and hide scrollbars */
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #f0f0f0;
+      position: relative;
+      height: 100vh;
+    }
+
+    /* Style for each heart */
+    .emoji {
+      position: absolute;
+      bottom: 0;
+      user-select: none;
+      /* Animate the heart from bottom to top */
+      animation: floatUp 5s linear forwards;
+    }
+
+    /* Define the float-up animation */
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-100vh);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    // URL Parameters to make the floating emojis dynamic
+    const urlParams = new URLSearchParams(window.location.search);
+    const emojiParam = urlParams.get('emoji');
+    const rateParam = Number(urlParams.get('rate')) || 500;
+
+    // Ensure emojis are decoded properly
+    const emojiList = emojiParam ? decodeURIComponent(emojiParam) : "❤️"; // Default to ❤️ if empty
+
+    // Correctly split emojis without breaking multi-character Unicode
+    const emojis = [...emojiList]; // ✅ Spreads emoji list correctly
+    let emojiIndex = 0; // Tracks which emoji to use next
+
+    // Variable to store the last heart's horizontal position (in vw)
+    let lastHeartLeft = null;
+
+    // Function to create and animate a heart emoji
+    function createHeart() {
+      const heart = document.createElement("div");
+      heart.className = "emoji";
+
+      // Define a threshold (in vw units) so hearts don't spawn too close horizontally
+      const threshold = 10;
+      let left = Math.random() * 100;
+
+      // Check against the last heart's position
+      if (lastHeartLeft !== null) {
+        // Recalculate the position if it's too close to the previous one
+        while (Math.abs(left - lastHeartLeft) < threshold) {
+          left = Math.random() * 100;
+        }
+      }
+      lastHeartLeft = left; // Update lastHeartLeft with the current heart's position
+
+      // Set the horizontal position using viewport width units
+      heart.style.left = left + "vw";
+
+      // Randomize heart size (40px to 80px)
+      heart.style.fontSize = (Math.random() * 20 + 20) + "px";
+
+      // ✅ Ensure emoji renders in color
+      heart.style.fontFamily = `"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+
+      // ✅ Correctly insert emoji using innerHTML to prevent black & white rendering
+      heart.innerHTML = emojis[emojiIndex];
+
+      // Update emoji index (loop back to start if needed)
+      emojiIndex = (emojiIndex + 1) % emojis.length;
+
+      // Append the heart to the document body
+      document.body.appendChild(heart);
+
+      // Remove the heart after the animation completes (6 seconds)
+      setTimeout(() => {
+        heart.remove();
+      }, 6000);
+    }
+
+    // Create a new heart every 200 milliseconds
+    setInterval(createHeart, rateParam);
+
+  </script>
+</body>
+
+</html>
