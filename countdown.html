@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Clock</title>
+  <style>
+    @font-face {
+      font-family: Montserrat;
+      src: url('fonts/MontserratRegular.ttf');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: Montserrat;
+      src: url('fonts/MontserratBold.ttf');
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    body {
+      font-family: Montserrat;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0);
+      color: white;
+      padding: 0px;
+      background: url('https://cdn.odiscodan.com/Assets/social/Socials_00000.png') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      /* Remove default margins */
+    }
+
+    #clock {
+      font-size: 120px;
+      font-weight: bold;
+      position: relative;
+      text-align: center;
+    }
+
+    .text {
+      position: relative;
+      font-family: Montserrat;
+      font-size: 50px;
+    }
+
+    p {
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <p class="text">STREAM STARTS IN</p>
+  </div>
+  <div id="clock">00:00:00</div>
+  <script>
+    // Returns a target time (in ms) based on URL parameters or the default (2:00 PM)
+    function getTargetTime() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hoursParam = urlParams.get('hours');
+      const minutesParam = urlParams.get('minutes');
+      const secondsParam = urlParams.get('seconds');
+
+      // If any countdown duration parameters are provided, use them.
+      if (hoursParam !== null || minutesParam !== null || secondsParam !== null) {
+        let h = parseInt(hoursParam) || 0;
+        let m = parseInt(minutesParam) || 0;
+        let s = parseInt(secondsParam) || 0;
+        return new Date().getTime() + (h * 3600000 + m * 60000 + s * 1000);
+      } else {
+        // Default: set initial target time to 2:00 PM today.
+        let defaultTarget = new Date();
+        defaultTarget.setHours(14, 0, 0, 0);
+        // If it's already past 2:00 PM, set target to tomorrow 2:00 PM.
+        if (new Date().getTime() >= defaultTarget.getTime()) {
+          defaultTarget.setDate(defaultTarget.getDate() + 1);
+        }
+        return defaultTarget.getTime();
+      }
+    }
+
+    function startCountdown(targetTime) {
+      function updateCountdown() {
+        const now = new Date().getTime();
+        const timeLeft = targetTime - now;
+
+        if (timeLeft <= 0) {
+          document.getElementById("clock").textContent = "00:00:00";
+          clearInterval(timerInterval);
+
+          // After reaching 0, wait 5 minutes then restart the countdown.
+          setTimeout(() => {
+            // Recalculate the target time using the same URL parameters (if any)
+            startCountdown(getTargetTime());
+          }, 300000); // 300,000 ms = 5 minutes
+
+          return;
+        }
+
+        let hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24)
+          .toString()
+          .padStart(2, "0");
+        let minutes = Math.floor((timeLeft / (1000 * 60)) % 60)
+          .toString()
+          .padStart(2, "0");
+        let seconds = Math.floor((timeLeft / 1000) % 60)
+          .toString()
+          .padStart(2, "0");
+
+        document.getElementById("clock").textContent = `${hours}:${minutes}:${seconds}`;
+      }
+
+      // Update the clock immediately and then every second.
+      updateCountdown();
+      var timerInterval = setInterval(updateCountdown, 1000);
+    }
+
+    // Start the countdown using the target time from URL parameters or the default.
+    startCountdown(getTargetTime());
+  </script>
+</body>
+
+</html>
