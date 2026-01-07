@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Bouncing Emoji</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Special+Gothic+Expanded+One&display=swap');
+
     /* reset and full-viewport */
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      
+
     }
-selector { cursor: none; }
+
+    selector {
+      cursor: none;
+    }
 
     body {
       position: relative;
@@ -26,12 +32,15 @@ selector { cursor: none; }
       align-items: center;
       height: 100%;
     }
-    .text, .clock, .format {
-  text-shadow: none;
-  -webkit-text-stroke: 2px #000;
-}
+
+    .text,
+    .clock,
+    .format {
+  text-shadow: 0 0 6px #000;
+    }
+
     /* inline SVG full-background */
-    #svgBackground {
+    .svgBackground {
       position: fixed;
       top: 0;
       left: 0;
@@ -40,81 +49,49 @@ selector { cursor: none; }
       z-index: -1;
       object-fit: cover;
     }
+
     .container {
       text-align: center;
       margin-top: 50px;
     }
+
     .text {
       font-size: 6rem;
       color: white;
       margin: 0;
     }
+
     .clock {
       font-size: 5rem;
       font-weight: bold;
       color: white;
       margin: 0.5em 0;
     }
+
     .format {
       font-size: 2.5rem;
       color: white;
       margin: 0;
     }
+
     /* bouncing emoji optimized */
     #bouncingImg {
-     position: fixed;            /* better than absolute inside flex body */
+      position: fixed;
       left: 0;
-  top: 0;
-  will-change: transform;
-  transform: translate3d(0,0,0);
-  contain: layout paint;      /* isolate layout+paint work */
-  pointer-events: none;       /* reduces hit-testing cost */
+      top: 0;
+      will-change: transform;
+      transform: translate3d(0, 0, 0);
+      contain: layout paint;
+      pointer-events: none;
+font-size: 80px;
+
     }
   </style>
 </head>
+
 <body>
-  <!-- Inline SVG background -->
-  <svg id="svgBackground" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-    <style>
-      .st0{fill:#666}.st1{fill:#bfbfbf}.st15{fill:#262626}.st16{fill:#fff}
-    </style>
-    <g id="layer2">
-      <path id="rect3394" d="M0 0h1920v1080H0z"/>
-      <path id="rect4808" d="M0 0h240v630H0z" class="st0"/>
-      <path id="rect4811" d="M240 0h205v630H240z" class="st1"/>
-      <path id="rect4839" fill="#bfbf00" d="M445 0h206v630H445z"/>
-      <path id="rect4841" fill="#00bfbf" d="M651 0h206v630H651z"/>
-      <path id="rect4843" fill="#00bf00" d="M857 0h206v630H857z"/>
-      <path id="rect4845" fill="#bf00bf" d="M1063 0h206v630h-206z"/>
-      <path id="rect4847" fill="#bf0000" d="M1269 0h206v630h-206z"/>
-      <path id="rect4849" fill="#0000bf" d="M1475 0h205v630h-205z"/>
-      <path id="rect4851" d="M1680 0h240v630h-240z" class="st0"/>
-      <path id="rect4180" fill="#0ff" d="M0 630h240v90H0z"/>
-      <path id="rect4182" fill="#003f69" d="M240 630h205v90H240z"/>
-      <path id="rect4232" d="M445 630h1235v90H445z" class="st1"/>
-      <path id="rect4234" fill="#00f" d="M1680 630h240v90h-240z"/>
-      <path id="rect4236" fill="#ff0" d="M0 720h240v90H0z"/>
-      <path id="rect4238" fill="#410077" d="M240 720h205v90H240z"/>
-      <linearGradient id="rect4240_00000078752745385694933880000004285230885311537562_" x1="437.331604" x2="1466.7346191" y1="16067" y2="16067" gradientTransform="matrix(1.00058 0 0 1 7.4147592 -15302)" gradientUnits="userSpaceOnUse">
-        <stop offset="0"/>
-        <stop offset="1" stop-color="#fff"/>
-      </linearGradient>
-      <path id="rect4240" fill="url(#rect4240_00000078752745385694933880000004285230885311537562_)" d="M445 720h1030v90H445z"/>
-      <path id="rect4250" fill="red" d="M1680 720h240v90h-240z"/>
-      <path id="rect4254" d="M0 810h240v270H0z" class="st15"/>
-      <path id="rect4256" d="M240 810h309v270H240z"/>
-      <path id="rect4258" d="M549 810h411v270H549z" class="st16"/>
-      <path id="rect4260" d="M960 810h171v270H960z"/>
-      <path id="rect4262" d="M1131 810h69v270h-69z"/>
-      <path id="rect4196" d="M1200 810h68v270h-68z"/>
-      <path id="rect4198" fill="#050505" d="M1268 810h69v270h-69z"/>
-      <path id="rect4200" d="M1337 810h68v270h-68z"/>
-      <path id="rect4202" fill="#0a0a0a" d="M1405 810h69v270h-69z"/>
-      <path id="rect4204" d="M1474 810h206v270h-206z"/>
-      <path id="rect4206" d="M1680 810h240v270h-240z" class="st15"/>
-    </g>
-    <path id="rect4250_00000025417549005041931040000018246960240555599293_" d="M1475 720h205v90h-205z" class="st16"/>
-  </svg>
+  <img class="svgBackground"
+    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/SMPTE_Color_Bars_16x9.svg/1920px-SMPTE_Color_Bars_16x9.svg.png">
 
   <div class="container">
     <p class="text">HELLO WORLD</p>
@@ -124,74 +101,75 @@ selector { cursor: none; }
 
   <div id="bouncingImg">🤖</div>
 
- <script>
-  // URL params override (do once)
-  const params = new URLSearchParams(location.search);
-  const textEl = document.querySelector(".text");
-  const formatEl = document.querySelector(".format");
-  const timeEl = document.getElementById("time");
-  const bouncingElem = document.getElementById("bouncingImg");
+  <script>
+    // URL params override (do once)
+    const params = new URLSearchParams(location.search);
+    const textEl = document.querySelector(".text");
+    const formatEl = document.querySelector(".format");
+    const timeEl = document.getElementById("time");
+    const bouncingElem = document.getElementById("bouncingImg");
 
-  if (params.has("text")) textEl.textContent = decodeURIComponent(params.get("text"));
-  if (params.has("format")) formatEl.textContent = decodeURIComponent(params.get("format"));
-  if (params.has("emoji")) bouncingElem.textContent = decodeURIComponent(params.get("emoji"));
+    if (params.has("text")) textEl.textContent = decodeURIComponent(params.get("text"));
+    if (params.has("format")) formatEl.textContent = decodeURIComponent(params.get("format"));
+    if (params.has("emoji")) bouncingElem.textContent = decodeURIComponent(params.get("emoji"));
 
-  const velocity = 400; // px/sec
-  let compW = 0, compH = 0;
-  let spriteW = 80, spriteH = 80;
-  let maxX = 0, maxY = 0;
+    const velocity = 400; // px/sec
+    let compW = 0, compH = 0;
+    let spriteW = 80, spriteH = 80;
+    let maxX = 0, maxY = 0;
 
-  function recalcBounds() {
-    compW = window.innerWidth;
-    compH = window.innerHeight;
+    function recalcBounds() {
+      compW = window.innerWidth;
+      compH = window.innerHeight;
 
-    // offsetWidth/Height forces layout, so ONLY do this on resize/emoji change
-    spriteW = bouncingElem.offsetWidth;
-    spriteH = bouncingElem.offsetHeight;
+      // offsetWidth/Height forces layout, so ONLY do this on resize/emoji change
+      spriteW = bouncingElem.offsetWidth;
+      spriteH = bouncingElem.offsetHeight;
 
-    maxX = Math.max(0, compW - spriteW);
-    maxY = Math.max(0, compH - spriteH);
-  }
+      maxX = Math.max(0, compW - spriteW);
+      maxY = Math.max(0, compH - spriteH);
+    }
 
-  function bounce(distance, max) {
-    if (max <= 0) return 0;
-    const period = max * 2;
-    let m = distance % period;
-    if (m < 0) m += period;
-    return (m <= max) ? m : (period - m);
-  }
+    function bounce(distance, max) {
+      if (max <= 0) return 0;
+      const period = max * 2;
+      let m = distance % period;
+      if (m < 0) m += period;
+      return (m <= max) ? m : (period - m);
+    }
 
-  function animate(ts) {
-    const t = ts * 0.001;       // seconds
-    const d = t * velocity;     // px travelled
-    const x = bounce(d, maxX);
-    const y = bounce(d, maxY);
+    function animate(ts) {
+      const t = ts * 0.001;       // seconds
+      const d = t * velocity;     // px travelled
+      const x = bounce(d, maxX);
+      const y = bounce(d, maxY);
 
-    // integer pixels = cheaper + less shimmer
-    bouncingElem.style.transform = `translate3d(${x|0}px, ${y|0}px, 0)`;
-    requestAnimationFrame(animate);
-  }
+      // integer pixels = cheaper + less shimmer
+      bouncingElem.style.transform = `translate3d(${x | 0}px, ${y | 0}px, 0)`;
+      requestAnimationFrame(animate);
+    }
 
-  function updateClockAligned() {
-    const now = new Date();
-    timeEl.textContent = now.toLocaleTimeString("en-US", {
-      hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+    function updateClockAligned() {
+      const now = new Date();
+      timeEl.textContent = now.toLocaleTimeString("en-US", {
+        hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+      });
+
+      // update exactly on the next second boundary (less repaint jitter)
+      setTimeout(updateClockAligned, 1000 - now.getMilliseconds());
+    }
+
+    window.addEventListener("load", () => {
+      recalcBounds();
+      updateClockAligned();
+      requestAnimationFrame(animate);
     });
 
-    // update exactly on the next second boundary (less repaint jitter)
-    setTimeout(updateClockAligned, 1000 - now.getMilliseconds());
-  }
-
-  window.addEventListener("load", () => {
-    recalcBounds();
-    updateClockAligned();
-    requestAnimationFrame(animate);
-  });
-
-  window.addEventListener("resize", () => {
-    recalcBounds();
-  }, { passive: true });
-</script>
+    window.addEventListener("resize", () => {
+      recalcBounds();
+    }, { passive: true });
+  </script>
 
 </body>
+
 </html>
