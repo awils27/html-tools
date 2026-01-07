@@ -128,64 +128,74 @@ selector { cursor: none; }
 
   <div id="bouncingImg">🤖</div>
 
-  <script>
-    // URL params override
-    const params = new URLSearchParams(location.search);
-    if (params.has('text')) document.querySelector('.text').innerText = decodeURIComponent(params.get('text'));
-    if (params.has('format')) document.querySelector('.format').innerText = decodeURIComponent(params.get('format'));
-    const bouncingElem = document.getElementById('bouncingImg');
-    if (params.has('emoji')) bouncingElem.innerText = decodeURIComponent(params.get('emoji'));
+ <script>
+  // URL params override (do once)
+  const params = new URLSearchParams(location.search);
+  const textEl = document.querySelector(".text");
+  const formatEl = document.querySelector(".format");
+  const timeEl = document.getElementById("time");
+  const bouncingElem = document.getElementById("bouncingImg");
 
-    // dimensions
-    let compSize = { width: window.innerWidth, height: window.innerHeight };
-    const velocity = 400;
-    const scale = [100,100], initialPos = [0,0], offset = 0, frameCount = 1;
-    let layer = { sourceRect: { width: 80, height: 80 } };
+  if (params.has("text")) textEl.textContent = decodeURIComponent(params.get("text"));
+  if (params.has("format")) formatEl.textContent = decodeURIComponent(params.get("format"));
+  if (params.has("emoji")) bouncingElem.textContent = decodeURIComponent(params.get("emoji"));
 
-    function updateLayer() {
-      const cs = getComputedStyle(bouncingElem);
-      layer.sourceRect.width = parseFloat(cs.width);
-      layer.sourceRect.height = parseFloat(cs.height);
-    }
+  const velocity = 400; // px/sec
+  let compW = 0, compH = 0;
+  let spriteW = 80, spriteH = 80;
+  let maxX = 0, maxY = 0;
 
-    function computePosition(time) {
-      const f = (time + offset) * velocity;
-      const t = [initialPos[0] + f, initialPos[1] + f];
-      const d = layer.sourceRect;
-      const lh = d.height * (scale[0]/100);
-      const tlw = d.width * (scale[1]/100);
-      const w = compSize.width - tlw;
-      const h = compSize.height - lh;
-      const cX = Math.floor(t[0]/w), cY = Math.floor(t[1]/h);
-      const pX = t[0] % w, pY = t[1] % h;
-      const x = (cX % 2 ? w - pX : pX) + tlw/2;
-      const y = (cY % 2 ? h - pY : pY) + lh/2;
-      return [x, y];
-    }
+  function recalcBounds() {
+    compW = window.innerWidth;
+    compH = window.innerHeight;
 
-    window.addEventListener('load', () => {
-      updateLayer();
-      animate();
-      setInterval(() => {
-        document.getElementById('time').innerText = new Date().toLocaleTimeString('en-US', {
-          hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-      }, 500);
+    // offsetWidth/Height forces layout, so ONLY do this on resize/emoji change
+    spriteW = bouncingElem.offsetWidth;
+    spriteH = bouncingElem.offsetHeight;
+
+    maxX = Math.max(0, compW - spriteW);
+    maxY = Math.max(0, compH - spriteH);
+  }
+
+  function bounce(distance, max) {
+    if (max <= 0) return 0;
+    const period = max * 2;
+    let m = distance % period;
+    if (m < 0) m += period;
+    return (m <= max) ? m : (period - m);
+  }
+
+  function animate(ts) {
+    const t = ts * 0.001;       // seconds
+    const d = t * velocity;     // px travelled
+    const x = bounce(d, maxX);
+    const y = bounce(d, maxY);
+
+    // integer pixels = cheaper + less shimmer
+    bouncingElem.style.transform = `translate3d(${x|0}px, ${y|0}px, 0)`;
+    requestAnimationFrame(animate);
+  }
+
+  function updateClockAligned() {
+    const now = new Date();
+    timeEl.textContent = now.toLocaleTimeString("en-US", {
+      hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
 
-    window.addEventListener('resize', () => {
-      compSize = { width: window.innerWidth, height: window.innerHeight };
-      updateLayer();
-    });
+    // update exactly on the next second boundary (less repaint jitter)
+    setTimeout(updateClockAligned, 1000 - now.getMilliseconds());
+  }
 
-    function animate() {
-      const t = performance.now()/1000;
-      const [cx, cy] = computePosition(t);
-      const x = cx - layer.sourceRect.width/2;
-      const y = cy - layer.sourceRect.height/2;
-      bouncingElem.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
-      requestAnimationFrame(animate);
-    }
-  </script>
+  window.addEventListener("load", () => {
+    recalcBounds();
+    updateClockAligned();
+    requestAnimationFrame(animate);
+  });
+
+  window.addEventListener("resize", () => {
+    recalcBounds();
+  }, { passive: true });
+</script>
+
 </body>
 </html>
