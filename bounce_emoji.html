@@ -26,6 +26,10 @@ selector { cursor: none; }
       align-items: center;
       height: 100%;
     }
+    .text, .clock, .format {
+  text-shadow: none;
+  -webkit-text-stroke: 2px #000;
+}
     /* inline SVG full-background */
     #svgBackground {
       position: fixed;
@@ -43,36 +47,28 @@ selector { cursor: none; }
     .text {
       font-size: 6rem;
       color: white;
-      text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
       margin: 0;
     }
     .clock {
       font-size: 5rem;
       font-weight: bold;
       color: white;
-      text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
       margin: 0.5em 0;
     }
     .format {
       font-size: 2.5rem;
       color: white;
-      text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
       margin: 0;
     }
     /* bouncing emoji optimized */
     #bouncingImg {
-      position: absolute;
+     position: fixed;            /* better than absolute inside flex body */
       left: 0;
-      top: 0;
-      width: 80px;
-      height: 80px;
-      font-size: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      will-change: transform;
-      backface-visibility: hidden;
-      transform-style: preserve-3d;
+  top: 0;
+  will-change: transform;
+  transform: translate3d(0,0,0);
+  contain: layout paint;      /* isolate layout+paint work */
+  pointer-events: none;       /* reduces hit-testing cost */
     }
   </style>
 </head>
