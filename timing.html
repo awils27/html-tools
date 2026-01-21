@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rapid Left/Right + Pause</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+    }
+
+    .stage {
+      position: relative;
+      height: 100%;
+    }
+
+    .block {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 80px;
+      height: 80px;
+      transform: translateY(-50%);
+      background: #4ade80;
+      border-radius: 10px;
+
+      /* Animation: quick ping-pong then a pause at the end */
+      animation: pingpongPause 1.2s linear infinite;
+      will-change: transform, left;
+    }
+
+    @keyframes pingpongPause {
+      /* 0% -> 70%: rapid back-and-forth */
+      0%   { left: 0%;   }
+      10%  { left: 90%;  }
+      20%  { left: 0%;   }
+      30%  { left: 90%;  }
+      40%  { left: 0%;   }
+      50%  { left: 90%;  }
+      60%  { left: 0%;   }
+      70%  { left: 90%;  }
+
+      /* 70% -> 100%: pause (hold position) */
+      100% { left: 90%;  }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="block"></div>
+  </div>
+</body>
+</html>
