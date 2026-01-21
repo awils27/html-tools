@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<items>
+  <item>
+    <type>TEMPLATE</type>
+    <label>caspar-simple-lower-third</label>
+    <name>caspar-simple-lower-third</name>
+    <flashlayer>20</flashlayer>
+    <invoke></invoke>
+    <usestoreddata>false</usestoreddata>
+    <useuppercasedata>false</useuppercasedata>
+    <triggeronnext>false</triggeronnext>
+    <sendasjson>false</sendasjson>
+      <templatedata>
+        <componentdata>
+          <id>LogoScale</id>
+          <value>17</value>
+        </componentdata>
+        <componentdata>
+          <id>Logo</id>
+          <value></value>
+        </componentdata>
+        <componentdata>
+          <id>LogoColor</id>
+          <value>#6C1515</value>
+        </componentdata>
+        <componentdata>
+          <id>DropeLine</id>
+          <value>DropLine</value>
+        </componentdata>
+        <componentdata>
+          <id>Name</id>
+          <value>Initial value</value>
+        </componentdata>
+      </templatedata>
+    <color>Transparent</color>
+  </item>
+</items>
