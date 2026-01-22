@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Caspar Events (lowercase)</title>
+    <script src="https://unpkg.com/@rive-app/canvas@2.34.1"></script>
+<style>
+  html {background-color: #00000000;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  }
+  body {
+    margin: 0;
+  }
+</style>
+
+
+  </head>
+
+  <body>
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+  </body>
+<script>
+(() => {
+  // ---------------------------
+  // Config
+  // ---------------------------
+  const WEATHER_URL   = "weather.json";   // { "Cities":[{City,TZ,Temp,Weather}, ...] }
+  const HEADLINES_URL = "headlines.json"; // { "Headlines":[ "...", "..." ] }
+
+  const TIMING = {
+    headlineHoldMs: 22000,
+    headlineOutGapMs: 1000,
+    cityHoldMs: 17000,
+    cityOutGapMs: 1000,
+  };
+
+  // ---------------------------
+  // Debug line
+  // ---------------------------
+  function setLine(line) {
+    console.log(line);
+  }
+  function stamp(name, extra) {
+    const t = new Date().toISOString().split("T")[1].replace("Z", "");
+    setLine(`${t} ${name}${extra ? " " + extra : ""}`);
+  }
+
+  // ---------------------------
+  // Helpers
+  // ---------------------------
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function loadJson(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${url}: ${res.status} ${res.statusText}`);
+    return await res.json();
+  }
+
+  function parseCasparPayload(args) {
+    for (const a of args) {
+      if (!a) continue;
+      if (typeof a === "object") return a;
+      if (typeof a === "string") {
+        try { return JSON.parse(a); } catch {}
+      }
+    }
+    return null;
+  }
+
+  function formatHHMM(date, timeZone) {
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone,
+    }).format(date);
+  }
+
+  // Force Weather to a valid int (prevents 0/NaN surprises)
+  function toIntOr(fallback, v) {
+    const n = typeof v === "number" ? v : parseInt(String(v ?? "").trim(), 10);
+    return Number.isFinite(n) ? Math.trunc(n) : fallback;
+  }
+
+  // ---------------------------
+  // Rive / state
+  // ---------------------------
+  const state = {
+    rive: null,
+    vmi: null,
+    h: null,
+
+    running: false,
+
+    headlines: [],
+    headlineIndex: 0,
+
+    cities: [],
+    cityIndex: 0,
+
+    currentTZ: "UTC",
+    timeTimer: null,
+  };
+
+  // Run token: prevents “ghost loops” after STOP/PLAY/CLEAR
+  let runToken = 0;
+
+  function cacheHandles(vmi) {
+    return {
+      // triggers
+      HeadlineIn:  vmi.trigger("HeadlineIn"),
+      HeadlineOut: vmi.trigger("HeadlineOut"),
+      CityInfoIn:  vmi.trigger("CityInfoIn"),
+      CityInfoOut: vmi.trigger("CityInfoOut"),
+      BreakingIn:  vmi.trigger("BreakingIn"),
+      BreakingOut: vmi.trigger("BreakingOut"),
+
+      // values
+      Headline:         vmi.string("Headline"),
+      BreakingHeadline: vmi.string("Breaking Headline"),
+      Weather:          vmi.number("Weather"),
+      City:             vmi.string("City"),
+      Tempreture:       vmi.string("Tempreture"),
+      Time:             vmi.string("Time"),
+    };
+  }
+
+  function applyCity(cityObj) {
+    if (!cityObj) return;
+
+    state.h.City.value = String(cityObj.City ?? "");
+    state.h.Tempreture.value = String(cityObj.Temp ?? "") + "°";
+
+    const w = toIntOr(1, cityObj.Weather); // choose your default icon id (1) instead of 0
+    state.h.Weather.value = w;
+
+    state.currentTZ = String(cityObj.TZ ?? "UTC");
+    state.h.Time.value = formatHHMM(new Date(), state.currentTZ);
+
+    // Optional debugging if you want to catch bad data:
+    // console.log("CITY", state.h.City.value, "Weather raw=", cityObj.Weather, "parsed=", w);
+  }
+
+  function applyHeadline(text) {
+    state.h.Headline.value = String(text ?? "");
+  }
+
+  function tickTime() {
+    if (!state.h) return;
+    state.h.Time.value = formatHHMM(new Date(), state.currentTZ);
+  }
+
+  async function refreshHeadlines() {
+    const j = await loadJson(HEADLINES_URL);
+    state.headlines = Array.isArray(j?.Headlines) ? j.Headlines : [];
+    state.headlineIndex = 0;
+    stamp("headlines loaded", String(state.headlines.length));
+  }
+
+  async function refreshWeather() {
+    const j = await loadJson(WEATHER_URL);
+    state.cities = Array.isArray(j?.Cities) ? j.Cities : [];
+    state.cityIndex = 0;
+    stamp("weather loaded", String(state.cities.length));
+  }
+
+  async function headlineLoop(myToken) {
+    while (state.running && myToken === runToken) {
+      if (!state.headlines.length) {
+        try { await refreshHeadlines(); } catch (e) { stamp("headlines load failed", e.message); }
+        if (!state.headlines.length) { await delay(1000); continue; }
+      }
+
+      if (state.headlineIndex >= state.headlines.length) {
+        try { await refreshHeadlines(); } catch (e) { stamp("headlines reload failed", e.message); }
+        state.headlineIndex = 0;
+        if (!state.headlines.length) { await delay(1000); continue; }
+      }
+
+      applyHeadline(state.headlines[state.headlineIndex]);
+
+      // (Optional) give values 1 frame to settle before triggering
+      await new Promise(requestAnimationFrame);
+      if (!state.running || myToken !== runToken) break;
+
+      state.h.HeadlineIn.trigger();
+
+      await delay(TIMING.headlineHoldMs);
+      if (!state.running || myToken !== runToken) break;
+
+      state.h.HeadlineOut.trigger();
+
+      await delay(TIMING.headlineOutGapMs);
+      if (!state.running || myToken !== runToken) break;
+
+      state.headlineIndex++;
+    }
+  }
+
+  async function cityLoop(myToken) {
+    while (state.running && myToken === runToken) {
+      if (!state.cities.length) {
+        try { await refreshWeather(); } catch (e) { stamp("weather load failed", e.message); }
+        if (!state.cities.length) { await delay(1000); continue; }
+      }
+
+      if (state.cityIndex >= state.cities.length) {
+        try { await refreshWeather(); } catch (e) { stamp("weather reload failed", e.message); }
+        state.cityIndex = 0;
+        if (!state.cities.length) { await delay(1000); continue; }
+      }
+
+      applyCity(state.cities[state.cityIndex]);
+
+      // Give values 1 frame to settle before triggering
+      await new Promise(requestAnimationFrame);
+      if (!state.running || myToken !== runToken) break;
+
+      state.h.CityInfoIn.trigger();
+
+      await delay(TIMING.cityHoldMs);
+      if (!state.running || myToken !== runToken) break;
+
+      state.h.CityInfoOut.trigger();
+
+      await delay(TIMING.cityOutGapMs);
+      if (!state.running || myToken !== runToken) break;
+
+      state.cityIndex++;
+    }
+  }
+
+  function startTicker() {
+    if (state.running) return;
+    state.running = true;
+
+    runToken++;
+    const myToken = runToken;
+
+    if (!state.timeTimer) state.timeTimer = setInterval(tickTime, 1000);
+
+    headlineLoop(myToken);
+    cityLoop(myToken);
+
+    stamp("ticker", "started");
+  }
+
+  function stopTicker() {
+    state.running = false;
+    runToken++; // invalidate any sleeping loops immediately
+
+    if (state.timeTimer) {
+      clearInterval(state.timeTimer);
+      state.timeTimer = null;
+    }
+    stamp("ticker", "stopped");
+  }
+
+  // ---------------------------
+  // Caspar callbacks (lowercase)
+  // ---------------------------
+  window.play = function () {
+    stamp("play");
+    startTicker();
+  };
+
+  window.stop = function () {
+    stamp("stop");
+    stopTicker();
+  };
+
+  window.next = function () {
+    stamp("next");
+  };
+
+  window.remove = function () {
+    stamp("remove");
+    stopTicker();
+  };
+
+  // Caspar UPDATE: only breaking control
+// ---------------------------
+// Caspar UPDATE (XML templateData) -> Breaking control
+// ---------------------------
+const pendingUpdates = [];
+
+function coerceBool(v) {
+  const t = String(v ?? "").trim().toLowerCase();
+  return t === "true" || t === "1" || t === "yes" || t === "on";
+}
+
+function parseTemplateDataXML(xml) {
+  try {
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    if (doc.getElementsByTagName("parsererror").length) return null;
+
+    const out = {};
+    for (const cd of doc.getElementsByTagName("componentData")) {
+      const id = cd.getAttribute("id");
+      if (!id) continue;
+
+      const data = cd.querySelector('data[id="text"]') || cd.querySelector("data");
+      const value = data?.getAttribute("value");
+      if (value != null) out[id] = value;
+    }
+    return Object.keys(out).length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+function applyBreaking(payload) {
+  // From your XML:
+  // <componentData id="Breaking"><data id="text" value="true"/></componentData>
+  // <componentData id="BreakingHeadline"><data id="text" value="..."/></componentData>
+  const breakingVal = payload.Breaking;
+  const text = payload.BreakingHeadline;
+
+  if (typeof text === "string") state.h.BreakingHeadline.value = text;
+
+  if (typeof breakingVal !== "undefined") {
+    if (coerceBool(breakingVal)) state.h.BreakingIn.trigger();
+    else state.h.BreakingOut.trigger();
+  }
+}
+
+window.update = (raw) => {
+  // IMPORTANT: Caspar passes ONE arg: the raw XML string
+  const payload = parseTemplateDataXML(String(raw || ""));
+  stamp("update", payload ? "" : "(bad xml)");
+  if (!payload) return;
+
+  if (!state.h) {
+    pendingUpdates.push(payload); // Rive not ready yet
+    return;
+  }
+
+  applyBreaking(payload);
+};
+
+
+  // ---------------------------
+  // Rive init
+  // ---------------------------
+  const r = new rive.Rive({
+    src: "newsticker.riv",
+    canvas: document.getElementById("canvas"),
+    autoplay: true,
+    autoBind: true,
+    stateMachines: "State Machine 1",
+    onLoad: () => {
+      state.rive = r;
+      r.resizeDrawingSurfaceToCanvas();
+
+      state.vmi = r.viewModelInstance;
+      if (!state.vmi) {
+        stamp("rive", "loaded but viewModelInstance missing");
+        return;
+      }
+
+      state.h = cacheHandles(state.vmi);
+      while (pendingUpdates.length) applyBreaking(pendingUpdates.shift());
+
+
+      // Load initial data once
+      refreshHeadlines().catch(e => stamp("headlines init failed", e.message));
+      refreshWeather().catch(e => stamp("weather init failed", e.message));
+
+      // Start immediately (or rely on Caspar PLAY if you prefer)
+      startTicker();
+
+      stamp("rive", "loaded");
+    },
+  });
+})();
+</script>
+
+
+</html>

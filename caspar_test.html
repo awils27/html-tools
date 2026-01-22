@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Caspar Events (lowercase)</title>
+
+    <script>
+      (function () {
+        let lastLine = "waiting…";
+
+        function setLine(line) {
+          lastLine = line;
+          const h1 = document.getElementById("t");
+          if (h1) h1.textContent = line;
+          console.log(line);
+        }
+
+        function stamp(name, args) {
+          const t = new Date().toISOString().split("T")[1].replace("Z", "");
+          let extra = "";
+          if (args && args.length) {
+            extra = " " + args.map(String).join(" ");
+          }
+          setLine(t + " " + name + extra);
+        }
+
+        function handler(name) {
+          return function () {
+            stamp(name, Array.prototype.slice.call(arguments));
+          };
+        }
+
+        // CasparCG template callbacks (lowercase only)
+        window.play   = handler("play");
+        window.stop   = handler("stop");
+        window.next   = handler("next");
+        window.update = handler("update");
+        window.remove = handler("remove");
+
+        document.addEventListener("DOMContentLoaded", function () {
+          setLine(lastLine);
+        });
+      })();
+    </script>
+  </head>
+
+  <body style="background-color: white;">
+    <h1 id="t">waiting…</h1>
+  </body>
+</html>
