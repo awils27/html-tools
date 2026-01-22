@@ -9,25 +9,25 @@
     {
       "City": "SYD",
       "TZ": "Australia/Sydney",
-      "Temp": 30,
+      "Temp": 25,
       "Weather": 2
     },
     {
       "City": "CBR",
       "TZ": "Australia/Canberra",
-      "Temp": 30,
+      "Temp": 22,
       "Weather": 3
     },
     {
       "City": "MEL",
       "TZ": "Australia/Melbourne",
-      "Temp": 22,
+      "Temp": 18,
       "Weather": 2
     },
     {
       "City": "HBA",
       "TZ": "Australia/Hobart",
-      "Temp": 22,
+      "Temp": 15,
       "Weather": 5
     },
     {
@@ -39,13 +39,13 @@
     {
       "City": "PER",
       "TZ": "Australia/Perth",
-      "Temp": 22,
+      "Temp": 26,
       "Weather": 2
     },
     {
       "City": "DRW",
       "TZ": "Australia/Darwin",
-      "Temp": 22,
+      "Temp": 31,
       "Weather": 1
     }
   ]
