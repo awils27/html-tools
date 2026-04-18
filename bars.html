@@ -100,6 +100,7 @@ font-size: 80px;
   </div>
 
   <div id="bouncingImg">🤖</div>
+  <audio id="beepAudio" src="beep.mp3" autoplay loop preload="auto"></audio>
 
   <script>
     // URL params override (do once)
@@ -108,6 +109,7 @@ font-size: 80px;
     const formatEl = document.querySelector(".format");
     const timeEl = document.getElementById("time");
     const bouncingElem = document.getElementById("bouncingImg");
+    const beepAudio = document.getElementById("beepAudio");
 
     if (params.has("text")) textEl.textContent = decodeURIComponent(params.get("text"));
     if (params.has("format")) formatEl.textContent = decodeURIComponent(params.get("format"));
@@ -159,9 +161,24 @@ font-size: 80px;
       setTimeout(updateClockAligned, 1000 - now.getMilliseconds());
     }
 
+    function startBeep() {
+      const playAttempt = beepAudio.play();
+      if (playAttempt) {
+        playAttempt.catch(() => {
+          const unlockAudio = () => {
+            beepAudio.play();
+          };
+
+          window.addEventListener("pointerdown", unlockAudio, { once: true });
+          window.addEventListener("keydown", unlockAudio, { once: true });
+        });
+      }
+    }
+
     window.addEventListener("load", () => {
       recalcBounds();
       updateClockAligned();
+      startBeep();
       requestAnimationFrame(animate);
     });
 
