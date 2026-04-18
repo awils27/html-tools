@@ -185,6 +185,7 @@ font-size: 80px;
     function setAudioButton(isOn) {
       audioToggle.setAttribute("aria-pressed", String(isOn));
       audioToggle.textContent = isOn ? "Audio on" : "Audio off";
+      audioToggle.hidden = isOn;
     }
 
     function startBeep() {
