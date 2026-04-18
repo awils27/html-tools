@@ -86,6 +86,25 @@
 font-size: 80px;
 
     }
+
+    #audioToggle {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 2;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.58);
+      color: #fff;
+      font: 700 14px/1 'Roboto', sans-serif;
+      text-shadow: 0 0 4px #000;
+      cursor: pointer;
+    }
+
+    #audioToggle[aria-pressed="true"] {
+      background: rgba(0, 128, 96, 0.72);
+    }
   </style>
 </head>
 
@@ -100,7 +119,8 @@ font-size: 80px;
   </div>
 
   <div id="bouncingImg">🤖</div>
-  <audio id="beepAudio" src="beep.mp3" autoplay loop preload="auto"></audio>
+  <button id="audioToggle" type="button" aria-pressed="false">Audio off</button>
+  <audio id="beepAudio" src="beep.mp3" loop preload="auto"></audio>
 
   <script>
     // URL params override (do once)
@@ -110,6 +130,7 @@ font-size: 80px;
     const timeEl = document.getElementById("time");
     const bouncingElem = document.getElementById("bouncingImg");
     const beepAudio = document.getElementById("beepAudio");
+    const audioToggle = document.getElementById("audioToggle");
 
     if (params.has("text")) textEl.textContent = decodeURIComponent(params.get("text"));
     if (params.has("format")) formatEl.textContent = decodeURIComponent(params.get("format"));
@@ -161,24 +182,43 @@ font-size: 80px;
       setTimeout(updateClockAligned, 1000 - now.getMilliseconds());
     }
 
+    function setAudioButton(isOn) {
+      audioToggle.setAttribute("aria-pressed", String(isOn));
+      audioToggle.textContent = isOn ? "Audio on" : "Audio off";
+    }
+
     function startBeep() {
+      beepAudio.muted = false;
       const playAttempt = beepAudio.play();
       if (playAttempt) {
-        playAttempt.catch(() => {
-          const unlockAudio = () => {
-            beepAudio.play();
-          };
-
-          window.addEventListener("pointerdown", unlockAudio, { once: true });
-          window.addEventListener("keydown", unlockAudio, { once: true });
+        return playAttempt.then(() => {
+          setAudioButton(true);
+        }).catch(() => {
+          setAudioButton(false);
         });
       }
+
+      setAudioButton(true);
+      return Promise.resolve();
     }
+
+    function stopBeep() {
+      beepAudio.pause();
+      setAudioButton(false);
+    }
+
+    audioToggle.addEventListener("click", () => {
+      if (beepAudio.paused || beepAudio.muted) {
+        startBeep();
+      } else {
+        stopBeep();
+      }
+    });
 
     window.addEventListener("load", () => {
       recalcBounds();
       updateClockAligned();
-      startBeep();
+      if (params.get("audio") === "on") startBeep();
       requestAnimationFrame(animate);
     });
 
