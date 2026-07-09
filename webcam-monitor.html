@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Webcam Monitor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(14, 18, 24, 0.82);
+      --panel-border: rgba(255, 255, 255, 0.18);
+      --text: #f4f7fb;
+      --muted: #aeb8c8;
+      --accent: #35d07f;
+      --danger: #ff5d5d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #05070a;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    video {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .controls {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(170px, 1.3fr) minmax(170px, 1.3fr) minmax(170px, 1.3fr) minmax(150px, 1fr) auto auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    select,
+    button,
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select,
+    button {
+      min-height: 38px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      font: inherit;
+    }
+
+    select {
+      padding: 0 10px;
+    }
+
+    button {
+      width: auto;
+      padding: 0 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.primary {
+      border-color: rgba(53, 208, 127, 0.7);
+      background: rgba(53, 208, 127, 0.22);
+    }
+
+    button.danger {
+      border-color: rgba(255, 93, 93, 0.7);
+      background: rgba(255, 93, 93, 0.18);
+    }
+
+    option {
+      background: #171b22;
+      color: var(--text);
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 2;
+      max-width: min(620px, calc(100vw - 32px));
+      padding: 10px 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      backdrop-filter: blur(14px);
+    }
+
+    .status strong {
+      color: var(--text);
+    }
+
+    .status.error {
+      border-color: rgba(255, 93, 93, 0.7);
+      color: #ffd7d7;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 1080px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      label {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .controls {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        grid-template-columns: 1fr;
+      }
+
+      label {
+        grid-column: auto;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <video id="preview" autoplay playsinline></video>
+  <audio id="monitorAudio" autoplay></audio>
+
+  <div id="status" class="status">
+    <strong>Webcam Monitor</strong><br />
+    Choose devices, then start monitoring. Use headphones if the mic can hear your speakers.
+  </div>
+
+  <form id="controls" class="controls">
+    <label>
+      Camera
+      <select id="cameraSelect"></select>
+    </label>
+
+    <label>
+      Audio input
+      <select id="audioSelect"></select>
+    </label>
+
+    <label id="outputLabel">
+      Audio output
+      <select id="outputSelect"></select>
+    </label>
+
+    <label>
+      Monitor volume
+      <span class="range-row">
+        <input id="volumeControl" type="range" min="0" max="1" value="0.5" step="0.01" />
+        <span id="volumeValue">50%</span>
+      </span>
+    </label>
+
+    <button id="startButton" class="primary" type="button">Start</button>
+    <button id="fullscreenButton" type="button">Fullscreen</button>
+  </form>
+
+  <script>
+    const preview = document.getElementById('preview');
+    const monitorAudio = document.getElementById('monitorAudio');
+    const statusBox = document.getElementById('status');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const audioSelect = document.getElementById('audioSelect');
+    const outputLabel = document.getElementById('outputLabel');
+    const outputSelect = document.getElementById('outputSelect');
+    const volumeControl = document.getElementById('volumeControl');
+    const volumeValue = document.getElementById('volumeValue');
+    const startButton = document.getElementById('startButton');
+    const fullscreenButton = document.getElementById('fullscreenButton');
+
+    let currentStream = null;
+    let hasPrimedPermissions = false;
+
+    if (!('setSinkId' in HTMLMediaElement.prototype)) {
+      outputLabel.classList.add('hidden');
+    }
+
+    function setStatus(message, isError = false) {
+      statusBox.innerHTML = message;
+      statusBox.classList.toggle('error', isError);
+    }
+
+    function setStatusLines(heading, lines = [], isError = false) {
+      statusBox.replaceChildren();
+      const strong = document.createElement('strong');
+      strong.textContent = heading;
+      statusBox.append(strong);
+      for (const line of lines) {
+        statusBox.append(document.createElement('br'), document.createTextNode(line));
+      }
+      statusBox.classList.toggle('error', isError);
+    }
+
+    function stopStream() {
+      if (!currentStream) {
+        return;
+      }
+
+      currentStream.getTracks().forEach((track) => track.stop());
+      currentStream = null;
+      preview.srcObject = null;
+      monitorAudio.srcObject = null;
+    }
+
+    function optionLabel(device, fallback, index) {
+      return device.label || `${fallback} ${index + 1}`;
+    }
+
+    async function loadDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter((device) => device.kind === 'videoinput');
+      const audioInputs = devices.filter((device) => device.kind === 'audioinput');
+      const audioOutputs = devices.filter((device) => device.kind === 'audiooutput');
+
+      cameraSelect.replaceChildren(...cameras.map((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = optionLabel(device, 'Camera', index);
+        return option;
+      }));
+
+      audioSelect.replaceChildren(...audioInputs.map((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = optionLabel(device, 'Audio input', index);
+        return option;
+      }));
+
+      outputSelect.replaceChildren(...audioOutputs.map((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = optionLabel(device, 'Audio output', index);
+        return option;
+      }));
+
+      if (!cameras.length) {
+        cameraSelect.append(new Option('No cameras found', ''));
+      }
+
+      if (!audioInputs.length) {
+        audioSelect.append(new Option('No audio inputs found', ''));
+      }
+
+      if (!audioOutputs.length) {
+        outputSelect.append(new Option('Default output', ''));
+      }
+    }
+
+    async function primePermissions() {
+      if (hasPrimedPermissions) {
+        return;
+      }
+
+      const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      probe.getTracks().forEach((track) => track.stop());
+      hasPrimedPermissions = true;
+      await loadDevices();
+    }
+
+    async function startMonitoring() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('This browser does not support camera and microphone capture.');
+        }
+
+        startButton.disabled = true;
+        setStatus('<strong>Starting...</strong><br />Waiting for camera and microphone permission.');
+        await primePermissions();
+        stopStream();
+
+        const videoDeviceId = cameraSelect.value;
+        const audioDeviceId = audioSelect.value;
+        const constraints = {
+          video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
+          audio: audioDeviceId ? {
+            deviceId: { exact: audioDeviceId },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          } : true
+        };
+
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        preview.srcObject = currentStream;
+        preview.muted = true;
+        monitorAudio.srcObject = currentStream;
+        monitorAudio.volume = Number(volumeControl.value);
+        if (monitorAudio.setSinkId && outputSelect.value) {
+          await monitorAudio.setSinkId(outputSelect.value);
+        }
+        await Promise.allSettled([preview.play(), monitorAudio.play()]);
+
+        const videoTrack = currentStream.getVideoTracks()[0];
+        const audioTrack = currentStream.getAudioTracks()[0];
+        const videoName = videoTrack?.label || 'selected camera';
+        const audioName = audioTrack?.label || 'selected audio input';
+        setStatusLines('Monitoring', [`Video: ${videoName}`, `Audio: ${audioName}`]);
+        startButton.textContent = 'Restart';
+        startButton.classList.remove('danger');
+        startButton.classList.add('primary');
+      } catch (error) {
+        stopStream();
+        setStatusLines('Could not start monitoring.', [error.message], true);
+      } finally {
+        startButton.disabled = false;
+      }
+    }
+
+    function updateVolume() {
+      const volume = Number(volumeControl.value);
+      monitorAudio.volume = volume;
+      volumeValue.textContent = `${Math.round(volume * 100)}%`;
+    }
+
+    async function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    }
+
+    startButton.addEventListener('click', startMonitoring);
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+    volumeControl.addEventListener('input', updateVolume);
+    cameraSelect.addEventListener('change', () => {
+      if (currentStream) {
+        startMonitoring();
+      }
+    });
+    audioSelect.addEventListener('change', () => {
+      if (currentStream) {
+        startMonitoring();
+      }
+    });
+    outputSelect.addEventListener('change', async () => {
+      if (monitorAudio.setSinkId && currentStream) {
+        await monitorAudio.setSinkId(outputSelect.value);
+      }
+    });
+    navigator.mediaDevices?.addEventListener('devicechange', loadDevices);
+
+    updateVolume();
+    loadDevices().catch((error) => {
+      setStatusLines('Device list unavailable.', [error.message], true);
+    });
+  </script>
+</body>
+
+</html>
