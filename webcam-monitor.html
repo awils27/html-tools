@@ -183,13 +183,15 @@
       display: none;
     }
 
-    body.ui-hidden .controls:not(:focus-within) {
+    body.ui-hidden .controls:not(:focus-within),
+    body.ui-force-hidden .controls {
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
     }
 
-    body.ui-hidden .status {
+    body.ui-hidden .status,
+    body.ui-force-hidden .status {
       opacity: 0;
       pointer-events: none;
       transform: translateY(-10px);
@@ -268,6 +270,7 @@
     const preview = document.getElementById('preview');
     const monitorAudio = document.getElementById('monitorAudio');
     const statusBox = document.getElementById('status');
+    const controls = document.getElementById('controls');
     const cameraSelect = document.getElementById('cameraSelect');
     const audioSelect = document.getElementById('audioSelect');
     const outputLabel = document.getElementById('outputLabel');
@@ -305,13 +308,23 @@
     }
 
     function showUi() {
-      document.body.classList.remove('ui-hidden');
+      document.body.classList.remove('ui-hidden', 'ui-force-hidden');
       clearTimeout(uiHideTimer);
       uiHideTimer = setTimeout(() => {
-        if (!document.activeElement || !document.getElementById('controls').contains(document.activeElement)) {
-          document.body.classList.add('ui-hidden');
-        }
+        hideUi(false);
       }, uiIdleDelay);
+    }
+
+    function hideUi(force = false) {
+      clearTimeout(uiHideTimer);
+      document.body.classList.add('ui-hidden');
+
+      if (force) {
+        document.body.classList.add('ui-force-hidden');
+        if (document.activeElement && controls.contains(document.activeElement)) {
+          document.activeElement.blur();
+        }
+      }
     }
 
     function stopStream() {
@@ -513,6 +526,14 @@
     document.addEventListener('keydown', showUi);
     document.addEventListener('focusin', showUi);
     document.addEventListener('focusout', showUi);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        hideUi(true);
+      }
+    });
+    window.addEventListener('blur', () => hideUi(true));
+    window.addEventListener('pagehide', () => hideUi(true));
+    window.addEventListener('focus', showUi);
     cameraSelect.addEventListener('change', () => {
       if (currentStream) {
         startMonitoring();
