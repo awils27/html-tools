@@ -31,6 +31,10 @@
       overflow: hidden;
     }
 
+    body.ui-hidden {
+      cursor: none;
+    }
+
     video {
       position: fixed;
       inset: 0;
@@ -56,6 +60,9 @@
       background: var(--panel);
       backdrop-filter: blur(14px);
       box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 180ms ease, transform 180ms ease;
     }
 
     label {
@@ -130,6 +137,9 @@
       font-size: 14px;
       line-height: 1.35;
       backdrop-filter: blur(14px);
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 180ms ease, transform 180ms ease;
     }
 
     .status strong {
@@ -143,6 +153,18 @@
 
     .hidden {
       display: none;
+    }
+
+    body.ui-hidden .controls:not(:focus-within) {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+    }
+
+    body.ui-hidden .status {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-10px);
     }
 
     @media (max-width: 1080px) {
@@ -226,6 +248,8 @@
 
     let currentStream = null;
     let hasPrimedPermissions = false;
+    let uiHideTimer = null;
+    const uiIdleDelay = 2500;
 
     if (!('setSinkId' in HTMLMediaElement.prototype)) {
       outputLabel.classList.add('hidden');
@@ -245,6 +269,16 @@
         statusBox.append(document.createElement('br'), document.createTextNode(line));
       }
       statusBox.classList.toggle('error', isError);
+    }
+
+    function showUi() {
+      document.body.classList.remove('ui-hidden');
+      clearTimeout(uiHideTimer);
+      uiHideTimer = setTimeout(() => {
+        if (!document.activeElement || !document.getElementById('controls').contains(document.activeElement)) {
+          document.body.classList.add('ui-hidden');
+        }
+      }, uiIdleDelay);
     }
 
     function stopStream() {
@@ -380,6 +414,12 @@
     startButton.addEventListener('click', startMonitoring);
     fullscreenButton.addEventListener('click', toggleFullscreen);
     volumeControl.addEventListener('input', updateVolume);
+    document.addEventListener('mousemove', showUi);
+    document.addEventListener('mousedown', showUi);
+    document.addEventListener('touchstart', showUi, { passive: true });
+    document.addEventListener('keydown', showUi);
+    document.addEventListener('focusin', showUi);
+    document.addEventListener('focusout', showUi);
     cameraSelect.addEventListener('change', () => {
       if (currentStream) {
         startMonitoring();
@@ -398,6 +438,7 @@
     navigator.mediaDevices?.addEventListener('devicechange', loadDevices);
 
     updateVolume();
+    showUi();
     loadDevices().catch((error) => {
       setStatusLines('Device list unavailable.', [error.message], true);
     });
