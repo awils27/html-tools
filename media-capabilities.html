@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browser Media Capabilities</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #151a20;
+      --panel-2: #10151b;
+      --border: #2b333d;
+      --text: #f4f7fb;
+      --muted: #a8b3c2;
+      --good: #36d184;
+      --warn: #f2bd4b;
+      --bad: #ff6961;
+      --accent: #64b5f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(1200px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    header {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+      margin-bottom: 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      min-width: 160px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    select,
+    button {
+      min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    select {
+      padding: 0 10px;
+    }
+
+    button {
+      padding: 0 14px;
+      cursor: pointer;
+      background: #1d4f72;
+      border-color: #3478aa;
+      white-space: nowrap;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .notice {
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border: 1px solid #564622;
+      border-radius: 8px;
+      background: #1d180d;
+      color: #ead7aa;
+      line-height: 1.45;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .stat strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 24px;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #111820;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      color: #d7e7f7;
+      overflow-wrap: anywhere;
+    }
+
+    .codec {
+      display: grid;
+      gap: 4px;
+      min-width: 110px;
+    }
+
+    .codec strong {
+      font-size: 16px;
+    }
+
+    .codec span,
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .yes {
+      border-color: rgba(54, 209, 132, 0.58);
+      background: rgba(54, 209, 132, 0.16);
+      color: var(--good);
+    }
+
+    .maybe {
+      border-color: rgba(242, 189, 75, 0.6);
+      background: rgba(242, 189, 75, 0.15);
+      color: var(--warn);
+    }
+
+    .no {
+      border-color: rgba(255, 105, 97, 0.62);
+      background: rgba(255, 105, 97, 0.14);
+      color: var(--bad);
+    }
+
+    .error {
+      max-width: 260px;
+      color: var(--bad);
+      overflow-wrap: anywhere;
+    }
+
+    .details {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100vw - 20px, 1200px);
+        padding-top: 18px;
+      }
+
+      .toolbar {
+        display: grid;
+      }
+
+      label,
+      button {
+        width: 100%;
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Browser Media Capabilities</h1>
+      <p>
+        Checks AVC, HEVC, VP9, and AV1 playback with the Media Capabilities API across common MP4 and WebM file
+        formats. Power efficient usually means the browser expects a low-power decode path, which is the closest
+        web-exposed signal for hardware acceleration.
+      </p>
+    </header>
+
+    <section class="toolbar" aria-label="Test controls">
+      <label>
+        Resolution
+        <select id="resolution">
+          <option value="1080">1920 x 1080</option>
+          <option value="2160">3840 x 2160</option>
+          <option value="4320">7680 x 4320</option>
+        </select>
+      </label>
+      <label>
+        Frame rate
+        <select id="framerate">
+          <option value="30">30 fps</option>
+          <option value="60" selected>60 fps</option>
+          <option value="120">120 fps</option>
+        </select>
+      </label>
+      <label>
+        Bitrate
+        <select id="bitrate">
+          <option value="8000000">8 Mbps</option>
+          <option value="16000000" selected>16 Mbps</option>
+          <option value="35000000">35 Mbps</option>
+          <option value="80000000">80 Mbps</option>
+        </select>
+      </label>
+      <button id="run" type="button">Run Checks</button>
+    </section>
+
+    <div id="apiNotice" class="notice" hidden>
+      This browser does not expose <code>navigator.mediaCapabilities.decodingInfo()</code>. The table will use
+      <code>HTMLMediaElement.canPlayType()</code> only, so smoothness and power efficiency cannot be reported.
+    </div>
+
+    <section class="summary" aria-label="Result summary">
+      <div class="stat"><strong id="supportedCount">-</strong><span>playable profiles</span></div>
+      <div class="stat"><strong id="efficientCount">-</strong><span>likely hardware accelerated</span></div>
+      <div class="stat"><strong id="smoothCount">-</strong><span>smooth profiles</span></div>
+      <div class="stat"><strong id="testedCount">-</strong><span>profiles tested</span></div>
+    </section>
+
+    <section class="table-wrap" aria-label="Media capability results">
+      <table>
+        <thead>
+          <tr>
+            <th>Codec</th>
+            <th>Container / MIME</th>
+            <th>Codec String</th>
+            <th>Playable</th>
+            <th>Smooth</th>
+            <th>HW Accel Signal</th>
+            <th>canPlayType</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="results">
+          <tr>
+            <td colspan="8" class="muted">Run checks to test this browser.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      Results depend on this exact browser, OS, GPU, drivers, battery state, and the selected resolution/bitrate.
+      The API reports expected playback behavior, not a guaranteed decoder inventory.
+      API reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Media_Capabilities_API">MDN Media
+        Capabilities API</a>.
+    </footer>
+  </main>
+
+  <script>
+    const profiles = [
+      {
+        name: "AVC",
+        label: "H.264 Baseline",
+        mime: "video/mp4",
+        codec: "avc1.42E01E",
+        note: "Baseline profile, level 3.0"
+      },
+      {
+        name: "AVC",
+        label: "H.264 High",
+        mime: "video/mp4",
+        codec: "avc1.640028",
+        note: "High profile, level 4.0"
+      },
+      {
+        name: "HEVC",
+        label: "H.265 Main hvc1",
+        mime: "video/mp4",
+        codec: "hvc1.1.6.L120.B0",
+        note: "Main profile, level 4.0"
+      },
+      {
+        name: "HEVC",
+        label: "H.265 Main hev1",
+        mime: "video/mp4",
+        codec: "hev1.1.6.L120.B0",
+        note: "Main profile, level 4.0"
+      },
+      {
+        name: "HEVC",
+        label: "H.265 Main 10 hvc1",
+        mime: "video/mp4",
+        codec: "hvc1.2.4.L120.B0",
+        note: "Main 10 profile, level 4.0"
+      },
+      {
+        name: "VP9",
+        label: "VP9 Profile 0",
+        mime: "video/webm",
+        codec: "vp09.00.10.08",
+        note: "8-bit 4:2:0"
+      },
+      {
+        name: "VP9",
+        label: "VP9 Profile 0 MP4",
+        mime: "video/mp4",
+        codec: "vp09.00.10.08",
+        note: "8-bit 4:2:0"
+      },
+      {
+        name: "VP9",
+        label: "VP9 Profile 2",
+        mime: "video/webm",
+        codec: "vp09.02.10.10",
+        note: "10-bit 4:2:0"
+      },
+      {
+        name: "AV1",
+        label: "AV1 Main 8-bit",
+        mime: "video/mp4",
+        codec: "av01.0.08M.08",
+        note: "Main profile, 8-bit"
+      },
+      {
+        name: "AV1",
+        label: "AV1 Main 8-bit WebM",
+        mime: "video/webm",
+        codec: "av01.0.08M.08",
+        note: "Main profile, 8-bit"
+      },
+      {
+        name: "AV1",
+        label: "AV1 Main 10-bit",
+        mime: "video/mp4",
+        codec: "av01.0.10M.10",
+        note: "Main profile, 10-bit"
+      }
+    ];
+
+    const dimensions = {
+      1080: { width: 1920, height: 1080 },
+      2160: { width: 3840, height: 2160 },
+      4320: { width: 7680, height: 4320 }
+    };
+
+    const tbody = document.getElementById("results");
+    const runButton = document.getElementById("run");
+    const apiNotice = document.getElementById("apiNotice");
+    const videoProbe = document.createElement("video");
+
+    function contentType(profile) {
+      return `${profile.mime}; codecs="${profile.codec}"`;
+    }
+
+    function canPlay(profile) {
+      const result = videoProbe.canPlayType(contentType(profile));
+      return result || "no";
+    }
+
+    function pill(value, yesLabel = "Yes", noLabel = "No") {
+      if (value === true || value === "probably") {
+        return `<span class="pill yes">${yesLabel}</span>`;
+      }
+
+      if (value === "maybe") {
+        return '<span class="pill maybe">Maybe</span>';
+      }
+
+      if (value === null || value === undefined) {
+        return '<span class="pill maybe">Unknown</span>';
+      }
+
+      return `<span class="pill no">${noLabel}</span>`;
+    }
+
+    function rowHtml(result) {
+      const error = result.error ? `<div class="error">${result.error}</div>` : "";
+
+      return `
+        <tr>
+          <td>
+            <div class="codec">
+              <strong>${result.profile.name}</strong>
+              <span>${result.profile.label}</span>
+            </div>
+          </td>
+          <td><code>${result.profile.mime}</code></td>
+          <td><code>${result.profile.codec}</code></td>
+          <td>${pill(result.supported)}</td>
+          <td>${pill(result.smooth)}</td>
+          <td>${pill(result.powerEfficient, "Likely", "No")}</td>
+          <td>${pill(result.canPlayType)}</td>
+          <td>
+            <div class="details">
+              <span>${result.profile.note}</span>
+              <span>${result.width} x ${result.height}, ${result.framerate} fps, ${Math.round(result.bitrate / 1000000)} Mbps</span>
+              ${error}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    async function testProfile(profile, settings) {
+      const baseResult = {
+        profile,
+        ...settings,
+        canPlayType: canPlay(profile),
+        supported: null,
+        smooth: null,
+        powerEfficient: null,
+        error: ""
+      };
+
+      if (!("mediaCapabilities" in navigator) || !navigator.mediaCapabilities.decodingInfo) {
+        baseResult.supported = baseResult.canPlayType === "probably" || baseResult.canPlayType === "maybe";
+        return baseResult;
+      }
+
+      try {
+        const result = await navigator.mediaCapabilities.decodingInfo({
+          type: "file",
+          video: {
+            contentType: contentType(profile),
+            width: settings.width,
+            height: settings.height,
+            bitrate: settings.bitrate,
+            framerate: settings.framerate
+          }
+        });
+
+        return {
+          ...baseResult,
+          supported: result.supported,
+          smooth: result.smooth,
+          powerEfficient: result.powerEfficient
+        };
+      } catch (error) {
+        return {
+          ...baseResult,
+          supported: baseResult.canPlayType === "probably" || baseResult.canPlayType === "maybe",
+          error: error.message || String(error)
+        };
+      }
+    }
+
+    function renderSummary(results) {
+      document.getElementById("supportedCount").textContent = results.filter((result) => result.supported).length;
+      document.getElementById("efficientCount").textContent = results.filter((result) => result.powerEfficient).length;
+      document.getElementById("smoothCount").textContent = results.filter((result) => result.smooth).length;
+      document.getElementById("testedCount").textContent = results.length;
+    }
+
+    async function runChecks() {
+      runButton.disabled = true;
+      runButton.textContent = "Checking...";
+      tbody.innerHTML = '<tr><td colspan="8" class="muted">Testing browser media capabilities...</td></tr>';
+      apiNotice.hidden = Boolean("mediaCapabilities" in navigator && navigator.mediaCapabilities.decodingInfo);
+
+      const size = dimensions[document.getElementById("resolution").value];
+      const settings = {
+        ...size,
+        bitrate: Number(document.getElementById("bitrate").value),
+        framerate: Number(document.getElementById("framerate").value)
+      };
+
+      const results = await Promise.all(profiles.map((profile) => testProfile(profile, settings)));
+      tbody.innerHTML = results.map(rowHtml).join("");
+      renderSummary(results);
+      runButton.disabled = false;
+      runButton.textContent = "Run Checks";
+    }
+
+    runButton.addEventListener("click", runChecks);
+    runChecks();
+  </script>
+</body>
+
+</html>
