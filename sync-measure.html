@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sync Measurement</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #06080b;
+      --panel: #111820;
+      --panel-2: #0c1117;
+      --border: #2a3440;
+      --text: #f5f8fc;
+      --muted: #aab5c4;
+      --good: #35d07f;
+      --warn: #f0bc48;
+      --bad: #ff6868;
+      --accent: #66b7f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 12px;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    .preview-wrap {
+      position: relative;
+      min-height: calc(100vh - 24px);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #000;
+    }
+
+    video,
+    #overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    video {
+      object-fit: contain;
+    }
+
+    #overlay {
+      pointer-events: none;
+    }
+
+    .side {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .panel-inner {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    h2 {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 13px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    select,
+    input,
+    button {
+      min-height: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 6px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    select,
+    input {
+      width: 100%;
+      padding: 0 8px;
+    }
+
+    button {
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: rgba(53, 208, 127, 0.7);
+      background: rgba(53, 208, 127, 0.2);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .controls label {
+      grid-column: span 2;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      min-height: 64px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--panel-2);
+    }
+
+    .stat strong {
+      display: block;
+      min-height: 29px;
+      font-size: 25px;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .wide {
+      grid-column: span 2;
+    }
+
+    .good {
+      color: var(--good);
+    }
+
+    .warn {
+      color: var(--warn);
+    }
+
+    .bad {
+      color: var(--bad);
+    }
+
+    .meter {
+      height: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #05070a;
+    }
+
+    .meter div {
+      width: 0;
+      height: 100%;
+      background: var(--good);
+      transition: width 80ms linear;
+    }
+
+    .log {
+      min-height: 0;
+    }
+
+    #eventLog {
+      height: 100%;
+      min-height: 220px;
+      max-height: calc(100vh - 572px);
+      overflow: auto;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    #eventLog li {
+      padding: 7px 10px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    #eventLog strong {
+      color: var(--text);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 960px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-wrap {
+        min-height: 54vh;
+      }
+
+      #eventLog {
+        max-height: 260px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <section class="preview-wrap" aria-label="Live marker detection preview">
+      <video id="preview" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <div class="panel-inner">
+          <h1>Sync Measurement</h1>
+          <p id="statusText">Choose devices, then start capture. Detection overlay stays visible for debugging.</p>
+          <form class="controls">
+            <label>
+              Camera
+              <select id="cameraSelect"></select>
+            </label>
+            <label>
+              Audio input
+              <select id="audioSelect"></select>
+            </label>
+            <label>
+              Seed
+              <input id="seedInput" type="number" min="0" max="249" value="37" />
+            </label>
+            <label>
+              Center tone Hz
+              <input id="toneInput" type="number" min="400" max="3000" step="10" value="1760" />
+            </label>
+            <button id="startButton" class="primary" type="button">Start</button>
+            <button id="resetButton" type="button">Reset</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <h2>Diagnostics</h2>
+          <div class="stats">
+            <div class="stat wide"><strong id="offsetText">-</strong><span>audio minus video</span></div>
+            <div class="stat"><strong id="avgText">-</strong><span>rolling average</span></div>
+            <div class="stat"><strong id="jitterText">-</strong><span>jitter</span></div>
+            <div class="stat"><strong id="markerText">-</strong><span>current marker</span></div>
+            <div class="stat"><strong id="expectedText">-</strong><span>expected next</span></div>
+            <div class="stat"><strong id="fpsText">0</strong><span>analysis fps</span></div>
+            <div class="stat"><strong id="detectText">0%</strong><span>marker detection</span></div>
+            <div class="stat"><strong id="flashText">0</strong><span>visual flashes</span></div>
+            <div class="stat"><strong id="audioText">0</strong><span>audio patterns</span></div>
+            <div class="stat wide">
+              <div class="meter"><div id="audioMeter"></div></div>
+              <span>audio level</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel log">
+        <div class="panel-inner">
+          <h2>Recent Events</h2>
+        </div>
+        <ol id="eventLog"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <canvas id="analysisCanvas" class="hidden"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/aruco.js"></script>
+  <script>
+    const preview = document.getElementById("preview");
+    const overlay = document.getElementById("overlay");
+    const overlayContext = overlay.getContext("2d");
+    const analysisCanvas = document.getElementById("analysisCanvas");
+    const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
+    const cameraSelect = document.getElementById("cameraSelect");
+    const audioSelect = document.getElementById("audioSelect");
+    const seedInput = document.getElementById("seedInput");
+    const toneInput = document.getElementById("toneInput");
+    const startButton = document.getElementById("startButton");
+    const resetButton = document.getElementById("resetButton");
+    const statusText = document.getElementById("statusText");
+    const offsetText = document.getElementById("offsetText");
+    const avgText = document.getElementById("avgText");
+    const jitterText = document.getElementById("jitterText");
+    const markerText = document.getElementById("markerText");
+    const expectedText = document.getElementById("expectedText");
+    const fpsText = document.getElementById("fpsText");
+    const detectText = document.getElementById("detectText");
+    const flashText = document.getElementById("flashText");
+    const audioText = document.getElementById("audioText");
+    const audioMeter = document.getElementById("audioMeter");
+    const eventLog = document.getElementById("eventLog");
+
+    const markerCount = 250;
+    const maxAnalysisWidth = 640;
+    const cycleSeconds = 4;
+    let detector = null;
+    let currentStream = null;
+    let audioContext = null;
+    let processor = null;
+    let sourceNode = null;
+    let running = false;
+    let lastLuma = 0;
+    let lastFlashTime = -Infinity;
+    let lastAudioTime = -Infinity;
+    let latestMarkers = [];
+    let frameCount = 0;
+    let detectedFrameCount = 0;
+    let fpsWindowStart = performance.now();
+    let flashes = [];
+    let audioEvents = [];
+    let offsets = [];
+    let markerLock = null;
+
+    function markerIdForSecond(secondNumber) {
+      const seed = ((Math.floor(Number(seedInput.value) || 0) % markerCount) + markerCount) % markerCount;
+      return (seed + secondNumber * 29) % markerCount;
+    }
+
+    function secondModuloFromMarkerId(markerId) {
+      const seed = ((Math.floor(Number(seedInput.value) || 0) % markerCount) + markerCount) % markerCount;
+      return (((markerId - seed) * 69) % markerCount + markerCount) % markerCount;
+    }
+
+    function logEvent(label, detail, className = "") {
+      const li = document.createElement("li");
+      const time = new Date().toLocaleTimeString();
+      li.innerHTML = `<strong>${label}</strong> ${time}<br>${detail}`;
+      if (className) {
+        li.className = className;
+      }
+      eventLog.prepend(li);
+      while (eventLog.children.length > 80) {
+        eventLog.lastElementChild.remove();
+      }
+    }
+
+    function setStatus(message, className = "") {
+      statusText.textContent = message;
+      statusText.className = className;
+    }
+
+    function formatMs(value) {
+      if (!Number.isFinite(value)) {
+        return "-";
+      }
+
+      return `${value >= 0 ? "+" : ""}${value.toFixed(1)} ms`;
+    }
+
+    function resetMeasurements() {
+      lastLuma = 0;
+      lastFlashTime = -Infinity;
+      lastAudioTime = -Infinity;
+      flashes = [];
+      audioEvents = [];
+      offsets = [];
+      markerLock = null;
+      frameCount = 0;
+      detectedFrameCount = 0;
+      fpsWindowStart = performance.now();
+      offsetText.textContent = "-";
+      avgText.textContent = "-";
+      jitterText.textContent = "-";
+      markerText.textContent = "-";
+      expectedText.textContent = "-";
+      flashText.textContent = "0";
+      audioText.textContent = "0";
+      detectText.textContent = "0%";
+      eventLog.replaceChildren();
+      drawOverlay([]);
+    }
+
+    function getDetector() {
+      if (!window.AR?.Detector) {
+        return null;
+      }
+
+      if (!detector) {
+        detector = new AR.Detector({
+          dictionaryName: "ARUCO_MIP_36h12",
+          maxHammingDistance: 5
+        });
+      }
+
+      return detector;
+    }
+
+    async function loadDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter((device) => device.kind === "videoinput");
+      const audioInputs = devices.filter((device) => device.kind === "audioinput");
+
+      cameraSelect.replaceChildren(...cameras.map((device, index) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label || `Camera ${index + 1}`;
+        return option;
+      }));
+
+      audioSelect.replaceChildren(...audioInputs.map((device, index) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label || `Audio input ${index + 1}`;
+        return option;
+      }));
+
+      if (!cameras.length) {
+        cameraSelect.append(new Option("No cameras found", ""));
+      }
+
+      if (!audioInputs.length) {
+        audioSelect.append(new Option("No audio inputs found", ""));
+      }
+    }
+
+    function stopCapture() {
+      running = false;
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+      }
+      currentStream = null;
+      preview.srcObject = null;
+      if (processor) {
+        processor.disconnect();
+      }
+      if (sourceNode) {
+        sourceNode.disconnect();
+      }
+      processor = null;
+      sourceNode = null;
+      startButton.textContent = "Start";
+    }
+
+    async function startCapture() {
+      if (running) {
+        stopCapture();
+        setStatus("Capture stopped.");
+        return;
+      }
+
+      const aruco = getDetector();
+      if (!aruco) {
+        setStatus("ArUco library failed to load. Check network access to jsDelivr.", "bad");
+        return;
+      }
+
+      try {
+        startButton.disabled = true;
+        setStatus("Starting capture...");
+        const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        probe.getTracks().forEach((track) => track.stop());
+        await loadDevices();
+
+        currentStream = await navigator.mediaDevices.getUserMedia({
+          video: cameraSelect.value ? {
+            deviceId: { exact: cameraSelect.value },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 60 }
+          } : true,
+          audio: audioSelect.value ? {
+            deviceId: { exact: audioSelect.value },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          } : {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        preview.srcObject = currentStream;
+        await preview.play();
+        await setupAudio(currentStream);
+        running = true;
+        startButton.textContent = "Stop";
+        resetMeasurements();
+        setStatus("Measuring. Keep the phone marker fully in frame and the mic near the phone speaker.", "good");
+        requestVideoLoop();
+      } catch (error) {
+        stopCapture();
+        setStatus(error.message || String(error), "bad");
+      } finally {
+        startButton.disabled = false;
+      }
+    }
+
+    async function setupAudio(stream) {
+      audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      sourceNode = audioContext.createMediaStreamSource(stream);
+      processor = audioContext.createScriptProcessor(2048, 1, 1);
+      sourceNode.connect(processor);
+      processor.connect(audioContext.destination);
+
+      processor.onaudioprocess = (event) => {
+        const input = event.inputBuffer.getChannelData(0);
+        const sampleRate = event.inputBuffer.sampleRate;
+        const frequency = Number(toneInput.value) || 1760;
+        const rms = rootMeanSquare(input);
+        const centerPower = goertzelPower(input, sampleRate, frequency);
+        const lowerPower = goertzelPower(input, sampleRate, Math.max(320, frequency * 0.5));
+        const ratio = centerPower / Math.max(1e-9, lowerPower);
+        const bufferStart = performance.now() / 1000 - input.length / sampleRate;
+        audioMeter.style.width = `${Math.min(100, rms * 350)}%`;
+
+        if (rms > 0.025 && centerPower > 0.0008 && ratio > 1.35 && bufferStart - lastAudioTime > 2.2) {
+          const eventTime = bufferStart + input.length / sampleRate / 2;
+          lastAudioTime = eventTime;
+          audioEvents.push(eventTime);
+          audioText.textContent = String(audioEvents.length);
+          logEvent("Audio pattern", `Center tone detected, level ${(rms * 100).toFixed(1)}%.`);
+          pairEvents();
+        }
+      };
+    }
+
+    function rootMeanSquare(samples) {
+      let sum = 0;
+      for (let index = 0; index < samples.length; index += 1) {
+        sum += samples[index] * samples[index];
+      }
+
+      return Math.sqrt(sum / samples.length);
+    }
+
+    function goertzelPower(samples, sampleRate, frequency) {
+      const coefficient = 2 * Math.cos((2 * Math.PI * frequency) / sampleRate);
+      let q0 = 0;
+      let q1 = 0;
+      let q2 = 0;
+
+      for (let index = 0; index < samples.length; index += 1) {
+        q0 = coefficient * q1 - q2 + samples[index];
+        q2 = q1;
+        q1 = q0;
+      }
+
+      return (q1 * q1 + q2 * q2 - coefficient * q1 * q2) / samples.length;
+    }
+
+    function requestVideoLoop() {
+      if (!running) {
+        return;
+      }
+
+      if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+        preview.requestVideoFrameCallback((now) => {
+          analyzeFrame(now / 1000);
+          requestVideoLoop();
+        });
+        return;
+      }
+
+      requestAnimationFrame((now) => {
+        analyzeFrame(now / 1000);
+        requestVideoLoop();
+      });
+    }
+
+    function analyzeFrame(frameTime) {
+      if (!preview.videoWidth || !preview.videoHeight) {
+        return;
+      }
+
+      const scale = Math.min(1, maxAnalysisWidth / preview.videoWidth);
+      const width = Math.max(2, Math.round(preview.videoWidth * scale));
+      const height = Math.max(2, Math.round(preview.videoHeight * scale));
+      if (analysisCanvas.width !== width || analysisCanvas.height !== height) {
+        analysisCanvas.width = width;
+        analysisCanvas.height = height;
+      }
+
+      analysisContext.drawImage(preview, 0, 0, width, height);
+      const imageData = analysisContext.getImageData(0, 0, width, height);
+      const luma = averageLuma(imageData.data);
+      const markers = getDetector().detect(imageData);
+      latestMarkers = markers;
+      frameCount += 1;
+      if (markers.length) {
+        detectedFrameCount += 1;
+        handleMarkers(markers, frameTime);
+      }
+
+      if ((luma > 226 && lastLuma < 205 || luma - lastLuma > 42) && frameTime - lastFlashTime > 1.8) {
+        lastFlashTime = frameTime;
+        flashes.push(frameTime);
+        flashText.textContent = String(flashes.length);
+        logEvent("Visual flash", `Luminance spike ${luma.toFixed(0)} from ${lastLuma.toFixed(0)}.`);
+        pairEvents();
+      }
+      lastLuma = luma;
+      drawOverlay(markers, luma > 226);
+      updateFrameStats();
+    }
+
+    function averageLuma(data) {
+      let sum = 0;
+      let count = 0;
+      const step = 16;
+      for (let index = 0; index < data.length; index += 4 * step) {
+        sum += data[index] * 0.2126 + data[index + 1] * 0.7152 + data[index + 2] * 0.0722;
+        count += 1;
+      }
+
+      return sum / count;
+    }
+
+    function handleMarkers(markers, frameTime) {
+      const marker = markers[0];
+      markerText.textContent = String(marker.id);
+
+      if (!markerLock || markerLock.id !== marker.id) {
+        markerLock = { id: marker.id, time: frameTime };
+        const secondModulo = secondModuloFromMarkerId(marker.id);
+        expectedText.textContent = String(markerIdForSecond(secondModulo + 1));
+        logEvent("Marker", `Detected ID ${marker.id}, second modulo ${secondModulo}, with ${markers.length} marker${markers.length === 1 ? "" : "s"} in frame.`);
+      }
+    }
+
+    function drawOverlay(markers, isFlash = false) {
+      const rect = overlay.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width * devicePixelRatio));
+      const height = Math.max(1, Math.round(rect.height * devicePixelRatio));
+      if (overlay.width !== width || overlay.height !== height) {
+        overlay.width = width;
+        overlay.height = height;
+      }
+
+      overlayContext.clearRect(0, 0, width, height);
+      overlayContext.save();
+      overlayContext.scale(devicePixelRatio, devicePixelRatio);
+
+      if (isFlash) {
+        overlayContext.fillStyle = "rgba(255,255,255,0.18)";
+        overlayContext.fillRect(0, 0, rect.width, rect.height);
+      }
+
+      const mapping = videoToElementMapping(rect.width, rect.height);
+      markers.forEach((marker) => drawMarker(marker, mapping));
+
+      if (!markers.length) {
+        overlayContext.fillStyle = "rgba(255, 104, 104, 0.92)";
+        overlayContext.font = "14px Arial, Helvetica, sans-serif";
+        overlayContext.fillText("No ArUco marker detected", 16, 26);
+      }
+
+      overlayContext.restore();
+    }
+
+    function videoToElementMapping(elementWidth, elementHeight) {
+      const videoAspect = preview.videoWidth / preview.videoHeight;
+      const elementAspect = elementWidth / elementHeight;
+      let drawWidth = elementWidth;
+      let drawHeight = elementHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (elementAspect > videoAspect) {
+        drawWidth = elementHeight * videoAspect;
+        offsetX = (elementWidth - drawWidth) / 2;
+      } else {
+        drawHeight = elementWidth / videoAspect;
+        offsetY = (elementHeight - drawHeight) / 2;
+      }
+
+      return {
+        x: offsetX,
+        y: offsetY,
+        scaleX: drawWidth / analysisCanvas.width,
+        scaleY: drawHeight / analysisCanvas.height
+      };
+    }
+
+    function drawMarker(marker, mapping) {
+      const points = marker.corners.map((corner) => ({
+        x: mapping.x + corner.x * mapping.scaleX,
+        y: mapping.y + corner.y * mapping.scaleY
+      }));
+
+      overlayContext.lineWidth = 3;
+      overlayContext.strokeStyle = "#35d07f";
+      overlayContext.fillStyle = "#35d07f";
+      overlayContext.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) {
+          overlayContext.moveTo(point.x, point.y);
+        } else {
+          overlayContext.lineTo(point.x, point.y);
+        }
+      });
+      overlayContext.closePath();
+      overlayContext.stroke();
+
+      points.forEach((point, index) => {
+        overlayContext.beginPath();
+        overlayContext.arc(point.x, point.y, index === 0 ? 6 : 4, 0, Math.PI * 2);
+        overlayContext.fill();
+      });
+
+      const center = points.reduce((acc, point) => ({
+        x: acc.x + point.x / points.length,
+        y: acc.y + point.y / points.length
+      }), { x: 0, y: 0 });
+      overlayContext.font = "bold 16px Arial, Helvetica, sans-serif";
+      overlayContext.lineWidth = 4;
+      overlayContext.strokeStyle = "rgba(0,0,0,0.85)";
+      overlayContext.strokeText(`ID ${marker.id}`, center.x - 24, center.y);
+      overlayContext.fillText(`ID ${marker.id}`, center.x - 24, center.y);
+    }
+
+    function updateFrameStats() {
+      const now = performance.now();
+      const elapsed = (now - fpsWindowStart) / 1000;
+      if (elapsed < 1) {
+        return;
+      }
+
+      fpsText.textContent = (frameCount / elapsed).toFixed(1);
+      detectText.textContent = `${Math.round((detectedFrameCount / Math.max(1, frameCount)) * 100)}%`;
+      frameCount = 0;
+      detectedFrameCount = 0;
+      fpsWindowStart = now;
+    }
+
+    function pairEvents() {
+      if (!flashes.length || !audioEvents.length) {
+        return;
+      }
+
+      const flash = flashes[flashes.length - 1];
+      const audio = audioEvents.reduce((best, eventTime) => {
+        if (!best || Math.abs(eventTime - flash) < Math.abs(best - flash)) {
+          return eventTime;
+        }
+        return best;
+      }, null);
+
+      if (!audio || Math.abs(audio - flash) > 1.8) {
+        return;
+      }
+
+      const offset = (audio - flash) * 1000;
+      if (offsets.length && Math.abs(offsets[offsets.length - 1] - offset) < 0.1) {
+        return;
+      }
+
+      offsets.push(offset);
+      if (offsets.length > 30) {
+        offsets.shift();
+      }
+
+      const average = offsets.reduce((sum, value) => sum + value, 0) / offsets.length;
+      const variance = offsets.reduce((sum, value) => sum + Math.pow(value - average, 2), 0) / offsets.length;
+      const jitter = Math.sqrt(variance);
+
+      offsetText.textContent = formatMs(offset);
+      avgText.textContent = formatMs(average);
+      jitterText.textContent = formatMs(jitter).replace("+", "");
+      offsetText.className = Math.abs(offset) < 40 ? "good" : Math.abs(offset) < 100 ? "warn" : "bad";
+      logEvent("Offset", `${formatMs(offset)} audio minus video. Average ${formatMs(average)}, jitter ${jitter.toFixed(1)} ms.`);
+    }
+
+    startButton.addEventListener("click", startCapture);
+    resetButton.addEventListener("click", resetMeasurements);
+    cameraSelect.addEventListener("change", () => {
+      if (running) {
+        startCapture().then(startCapture);
+      }
+    });
+    audioSelect.addEventListener("change", () => {
+      if (running) {
+        startCapture().then(startCapture);
+      }
+    });
+    window.addEventListener("pagehide", stopCapture);
+    navigator.mediaDevices?.addEventListener("devicechange", loadDevices);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus("This browser does not support camera and microphone capture.", "bad");
+      startButton.disabled = true;
+    } else {
+      loadDevices().catch((error) => setStatus(error.message || String(error), "bad"));
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Sync Source</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050608;
+      --panel: rgba(9, 12, 16, 0.82);
+      --border: rgba(255, 255, 255, 0.15);
+      --text: #f7f9fc;
+      --muted: #abb6c5;
+      --accent: #34d399;
+      --warn: #f6c453;
+      --bad: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body.flash {
+      background: #fff;
+    }
+
+    .stage {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: var(--bg);
+      transition: background 10ms linear;
+    }
+
+    body.flash .stage {
+      background: #fff;
+    }
+
+    .marker-frame {
+      display: grid;
+      place-items: center;
+      width: min(var(--marker-size, 72vmin), calc(100vw - 28px), calc(100vh - 190px));
+      aspect-ratio: 1;
+      padding: 3.5%;
+      background: #fff;
+      border: 1px solid #d8dde7;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    body.flash .marker-frame {
+      opacity: 0;
+    }
+
+    #marker {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    #marker svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      shape-rendering: crispEdges;
+    }
+
+    .hud {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 3;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.42);
+    }
+
+    .readout {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 3;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .readout strong,
+    .readout span {
+      color: var(--text);
+    }
+
+    .readout div {
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    button {
+      min-height: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    button {
+      width: 112px;
+      min-width: 88px;
+      padding: 0 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.primary {
+      border-color: rgba(52, 211, 153, 0.72);
+      background: rgba(52, 211, 153, 0.22);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .warning {
+      color: var(--warn);
+    }
+
+    .bad {
+      color: var(--bad);
+    }
+
+    @media (max-width: 900px) {
+      .hud {
+        justify-content: center;
+      }
+
+      button {
+        min-width: 72px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .hud {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+      }
+
+      .readout {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        font-size: 11px;
+      }
+
+      .readout .optional {
+        display: none;
+      }
+    }
+
+    @media (max-height: 620px) {
+      .readout {
+        display: none;
+      }
+
+      .marker-frame {
+        width: min(var(--marker-size, 72vmin), calc(100vw - 28px), calc(100vh - 104px));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="stage">
+    <div class="marker-frame" aria-label="ArUco marker">
+      <div id="marker"></div>
+    </div>
+  </main>
+
+  <section class="readout" aria-live="polite">
+    <div><strong>Sync Source</strong></div>
+    <div>State <span id="stateText">stopped</span></div>
+    <div>ID <span id="markerIdText">-</span></div>
+    <div class="optional">Cycle <span id="cycleText">-</span></div>
+  </section>
+
+  <form class="hud">
+    <button id="startButton" class="primary" type="button">Start</button>
+    <button id="fullscreenButton" type="button">Full</button>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/aruco.js"></script>
+  <script>
+    const markerBox = document.getElementById("marker");
+    const stateText = document.getElementById("stateText");
+    const markerIdText = document.getElementById("markerIdText");
+    const cycleText = document.getElementById("cycleText");
+    const startButton = document.getElementById("startButton");
+    const fullscreenButton = document.getElementById("fullscreenButton");
+
+    const markerCount = 250;
+    const cycleSeconds = 4;
+    const leadTime = 1.0;
+    const seed = 37;
+    const markerSizeVmin = 72;
+    const flashDurationSeconds = 0.1;
+    const toneFrequency = 1760;
+    const toneLevel = 0.85;
+    const toneOffsets = [-0.36, -0.18, 0, 0.18, 0.36];
+    let dictionary = null;
+    let audioContext = null;
+    let masterGain = null;
+    let epoch = 0;
+    let running = false;
+    let lastMarkerId = null;
+    let schedulerTimer = null;
+    let nextCycleToSchedule = 0;
+    const activeOscillators = new Set();
+
+    function markerIdForSecond(secondNumber) {
+      return (seed + secondNumber * 29) % markerCount;
+    }
+
+    function ensureDictionary() {
+      if (!window.AR?.Dictionary) {
+        markerBox.innerHTML = '<div class="bad">ArUco library failed to load.</div>';
+        return false;
+      }
+
+      if (!dictionary) {
+        dictionary = new AR.Dictionary("ARUCO_MIP_36h12");
+      }
+
+      return true;
+    }
+
+    function renderMarker(markerId) {
+      if (!ensureDictionary()) {
+        return;
+      }
+
+      if (markerId === lastMarkerId) {
+        return;
+      }
+
+      markerBox.innerHTML = dictionary.generateSVG(markerId);
+      lastMarkerId = markerId;
+      markerIdText.textContent = String(markerId);
+    }
+
+    function scheduleBeep(time, frequency, duration, gainScale) {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const attack = 0.006;
+      const release = 0.018;
+      const level = toneLevel * gainScale;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, time);
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(level, time + attack);
+      gain.gain.setValueAtTime(level, time + Math.max(attack, duration - release));
+      gain.gain.linearRampToValueAtTime(0, time + duration);
+      oscillator.connect(gain).connect(masterGain);
+      activeOscillators.add(oscillator);
+      oscillator.onended = () => activeOscillators.delete(oscillator);
+      oscillator.start(time);
+      oscillator.stop(time + duration + 0.02);
+    }
+
+    function stopScheduledAudio() {
+      activeOscillators.forEach((oscillator) => {
+        try {
+          oscillator.stop();
+        } catch (error) {
+          activeOscillators.delete(oscillator);
+        }
+      });
+      activeOscillators.clear();
+    }
+
+    function scheduleCycle(cycleNumber) {
+      const flashTime = epoch + cycleNumber * cycleSeconds;
+      const centerFrequency = toneFrequency;
+      const lowerFrequency = Math.max(320, centerFrequency * 0.5);
+      const midFrequency = Math.max(420, centerFrequency * 0.75);
+      const frequencies = [lowerFrequency, midFrequency, centerFrequency, midFrequency, lowerFrequency];
+
+      toneOffsets.forEach((offset, index) => {
+        scheduleBeep(flashTime + offset, frequencies[index], 0.085, index === 2 ? 0.95 : 0.7);
+      });
+    }
+
+    function runScheduler() {
+      if (!running) {
+        return;
+      }
+
+      const now = audioContext.currentTime;
+      while (epoch + nextCycleToSchedule * cycleSeconds < now + 3) {
+        scheduleCycle(nextCycleToSchedule);
+        nextCycleToSchedule += 1;
+      }
+    }
+
+    function draw() {
+      if (!running) {
+        return;
+      }
+
+      const elapsed = audioContext.currentTime - epoch;
+      const secondNumber = Math.max(0, Math.floor(elapsed));
+      const cycleNumber = Math.max(0, Math.floor(secondNumber / cycleSeconds));
+      const phase = ((elapsed % cycleSeconds) + cycleSeconds) % cycleSeconds;
+      const isFlash = elapsed >= 0 && phase < flashDurationSeconds;
+      const markerId = markerIdForSecond(secondNumber);
+
+      document.body.classList.toggle("flash", isFlash);
+      renderMarker(markerId);
+      stateText.textContent = elapsed < 0 ? "armed" : isFlash ? "flash" : "running";
+      cycleText.textContent = String(cycleNumber);
+      requestAnimationFrame(draw);
+    }
+
+    async function start() {
+      if (running) {
+        running = false;
+        clearInterval(schedulerTimer);
+        stopScheduledAudio();
+        document.body.classList.remove("flash");
+        startButton.textContent = "Start";
+        stateText.textContent = "stopped";
+        return;
+      }
+
+      if (!ensureDictionary()) {
+        return;
+      }
+
+      audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      masterGain = audioContext.createGain();
+      masterGain.gain.value = 1;
+      masterGain.connect(audioContext.destination);
+      epoch = audioContext.currentTime + leadTime;
+      nextCycleToSchedule = 0;
+      lastMarkerId = null;
+      running = true;
+      startButton.textContent = "Stop";
+      renderMarker(markerIdForSecond(0));
+      runScheduler();
+      schedulerTimer = setInterval(runScheduler, 250);
+      requestAnimationFrame(draw);
+    }
+
+    async function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    }
+
+    startButton.addEventListener("click", start);
+    fullscreenButton.addEventListener("click", toggleFullscreen);
+    window.addEventListener("pagehide", () => {
+      running = false;
+      clearInterval(schedulerTimer);
+      stopScheduledAudio();
+    });
+
+    document.documentElement.style.setProperty("--marker-size", `${markerSizeVmin}vmin`);
+    ensureDictionary();
+    renderMarker(markerIdForSecond(0));
+  </script>
+</body>
+
+</html>
