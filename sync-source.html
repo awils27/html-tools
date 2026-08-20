@@ -213,6 +213,7 @@
   <section class="readout" aria-live="polite">
     <div><strong>Sync Source</strong></div>
     <div>State <span id="stateText">stopped</span></div>
+    <div>Audio <span id="audioText">off</span></div>
     <div>ID <span id="markerIdText">-</span></div>
     <div class="optional">Cycle <span id="cycleText">-</span></div>
   </section>
@@ -227,6 +228,7 @@
   <script>
     const markerBox = document.getElementById("marker");
     const stateText = document.getElementById("stateText");
+    const audioText = document.getElementById("audioText");
     const markerIdText = document.getElementById("markerIdText");
     const cycleText = document.getElementById("cycleText");
     const startButton = document.getElementById("startButton");
@@ -249,6 +251,7 @@
     let lastMarkerId = null;
     let schedulerTimer = null;
     let nextCycleToSchedule = 0;
+    let wakeLock = null;
     const activeOscillators = new Set();
 
     function markerIdForSecond(secondNumber) {
@@ -313,6 +316,44 @@
       activeOscillators.clear();
     }
 
+    async function keepScreenAwake() {
+      if (!("wakeLock" in navigator)) {
+        return;
+      }
+
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+      } catch (error) {
+        wakeLock = null;
+      }
+    }
+
+    async function releaseWakeLock() {
+      if (!wakeLock) {
+        return;
+      }
+
+      try {
+        await wakeLock.release();
+      } catch (error) {
+        // The lock may already be released by the browser.
+      }
+      wakeLock = null;
+    }
+
+    function primePhoneAudio() {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const now = audioContext.currentTime;
+
+      oscillator.frequency.value = toneFrequency;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.04);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.05);
+    }
+
     function scheduleCycle(cycleNumber) {
       const flashTime = epoch + cycleNumber * cycleSeconds;
       const centerFrequency = toneFrequency;
@@ -361,9 +402,11 @@
         running = false;
         clearInterval(schedulerTimer);
         stopScheduledAudio();
+        releaseWakeLock();
         document.body.classList.remove("flash");
         startButton.textContent = "Start";
         stateText.textContent = "stopped";
+        audioText.textContent = "off";
         return;
       }
 
@@ -373,14 +416,22 @@
 
       audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
       await audioContext.resume();
+      primePhoneAudio();
       masterGain = audioContext.createGain();
       masterGain.gain.value = 1;
       masterGain.connect(audioContext.destination);
+      if (audioContext.state !== "running") {
+        audioText.textContent = audioContext.state;
+        stateText.textContent = "tap again";
+        return;
+      }
       epoch = audioContext.currentTime + leadTime;
       nextCycleToSchedule = 0;
       lastMarkerId = null;
       running = true;
+      audioText.textContent = audioContext.state === "running" ? "on" : audioContext.state;
       startButton.textContent = "Stop";
+      keepScreenAwake();
       renderMarker(markerIdForSecond(0));
       runScheduler();
       schedulerTimer = setInterval(runScheduler, 250);
@@ -402,6 +453,15 @@
       running = false;
       clearInterval(schedulerTimer);
       stopScheduledAudio();
+      releaseWakeLock();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && running) {
+        keepScreenAwake();
+        audioContext?.resume().then(() => {
+          audioText.textContent = audioContext.state;
+        });
+      }
     });
 
     document.documentElement.style.setProperty("--marker-size", `${markerSizeVmin}vmin`);
